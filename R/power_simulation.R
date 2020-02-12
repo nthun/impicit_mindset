@@ -1,6 +1,8 @@
 library(tidyverse)
-library(faux)
+library(faux) ## devtools::install_github("debruine/faux")
 library(broom)
+
+theme_set(theme_light())
 
 # Function to generate dataset ------------------------------------------------------
 
@@ -45,11 +47,13 @@ power_matrix <-
   crossing(cell_size = seq.int(sample_increment, max_n, sample_increment),
            sample = 1:samples) 
 
+# Generate data (may take a while)
 simulation_data <-
   power_matrix %>% 
   as.list() %>% 
   pmap(~generate_dataset(n = ..1))
 
+# Calculate correlation for each sample
 simulation_result <- 
   simulation_data %>% 
   map(., ~cor.test(.x$explicit, .x$implicit, method = "spearman") %>% 
@@ -57,14 +61,14 @@ simulation_result <-
   bind_rows() %>% 
   bind_cols(power_matrix, .)
 
+# Count the proportion of significant correlations
 result_summary <-
   simulation_result %>% 
   group_by(cell_size) %>% 
   summarise(avg_r = mean(estimate),
             power = mean(p.value < significance))
 
-theme_set(theme_light())
-
+# Visualize
 result_summary %>% 
   ggplot() +
   aes(x = cell_size, y = power) +
@@ -72,6 +76,7 @@ result_summary %>%
   geom_point() +
   geom_line()
 
+# Intrapolate between the numbers to calculate the exact sample size
 tibble(cell_size = 1:max_n) %>% 
   left_join(select(result_summary, -avg_r), by = "cell_size") %>% 
   mutate(power = stats::approx(x = cell_size,
