@@ -1,0 +1,12 @@
+version: 2.6.1
+server-time: 2020-02-07-16-37
+ip: 188.6.145.211
+country: HU, Hungary
+hostname: 
+user_agent: mozilla/5.0 (macintosh; intel mac os x 10_12_6) applewebkit/537.36 (khtml, like gecko) chrome/78.0.3904.108 safari/537.36 opr/65.0.3467.78
+screen_width: 1440
+screen_height: 900
+html_width: 1400
+html_height: 859
+user_time: Fri, 07 Feb 2020 15:37:28 GMT
+T: 8980

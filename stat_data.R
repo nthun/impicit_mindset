@@ -13,7 +13,7 @@ important_targets <- c("chall_pos", "chall_neg", "crit_pos", "crit_neg")
 
 #reading and cleaning implicit data
 
-files <- list.files(path = "data (30)/", pattern = "immtest.*.txt$", full.names = TRUE)
+files <- list.files(path = "stat/", pattern = "immtest.*.txt$", full.names = TRUE)
 gnat_raw <- 
   vroom(file = files, 
         id = "id", 
@@ -53,7 +53,7 @@ final_gnat<-
   gnat_important%>% filter(rt %in% (300:1273))
 
 #reading explicit data
-explicit_raw <- read.xlsx("data (30)/data.xlsx", sheetIndex = 1) %>% 
+explicit_raw <- read.xlsx("stat/data.xlsx", sheetIndex = 1) %>% 
   extract(col = participant, 
           into = c(NA, "id", NA), 
           regex = "^(.*s.)(.*)(.txt)$")
@@ -153,7 +153,3 @@ ggscatter(final_data, x = "crit_d", y = "CRMS_M",
           add.params = list(color = "olivedrab3",
                             fill = "gray27"))
 #computing correlations in JASP
-
-
-
-
