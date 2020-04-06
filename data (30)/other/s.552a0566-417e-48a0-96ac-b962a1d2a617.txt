@@ -1,0 +1,17 @@
+version: 2.6.1
+server-time: 2020-02-12-09-46
+ip: 37.220.132.139
+country: HU, Hungary
+hostname: 
+user_agent: mozilla/5.0 (windows nt 10.0; win64; x64) applewebkit/537.36 (khtml, like gecko) chrome/80.0.3987.87 safari/537.36
+screen_width: 1366
+screen_height: 768
+html_width: 1209
+html_height: 2653
+user_time: Wed, 12 Feb 2020 08:46:53 GMT
+T: 7435
+l: Neptun
+stime: 2020-02-12-09-47
+T: 5062
+t: textline
+a: proba
