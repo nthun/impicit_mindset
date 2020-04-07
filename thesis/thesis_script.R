@@ -5,6 +5,7 @@ library(janitor)
 library(xlsx)
 library(widyr)
 library(dplyr)
+library(readxl)
 
 #defining important blocks
 important_targets <- c("chall_pos", "chall_neg", "crit_pos", "crit_neg")
@@ -14,6 +15,7 @@ important_targets <- c("chall_pos", "chall_neg", "crit_pos", "crit_neg")
 #reading and cleaning implicit data
 
 files <- list.files(path = "thesis/", pattern = "immtest.*.txt$", full.names = TRUE)
+
 gnat_raw <- 
   vroom(file = files, 
         id = "id", 
@@ -23,38 +25,37 @@ gnat_raw <-
           regex = "^(.*data.)(.*)(.txt)$")
 
 #keeping only important blocks
-gnat_important<- gnat_raw %>%  
+gnat_important <- 
+  gnat_raw %>%  
   filter(target %in% important_targets) %>% 
-  filter(trial_type=="go_trial")
+  filter(trial_type == "go_trial")
 
 #checking for block error rate above 40%
-correct_rate <-
+correct_block_rate <-
   gnat_important %>%  
   group_by(id, target) %>% 
-  summarise(correct = 1 - mean(error))
+  summarise(correct_block = 1 - mean(error))
 
-correct_gnat <- 
-  correct_rate %>% 
-  filter(correct<="0.6")
+correct_block_rate %>% 
+  filter(correct_block <= 0.6)
 
-#must delete these observations due to high block error rate
-final_gnat <- gnat_important %>% 
-  filter(!str_detect(id, 'bc421a54-0eb3-4c26-8052-f318ff733821', )) %>% 
-  filter(!str_detect(id, 'cde0ca74-cfb1-484a-adf6-8589195f52b1', )) 
-  
 #no more removal needed
-correct_all <-
+correct_all_rate <-
   gnat_important %>% 
   filter(target %in% important_targets) %>%
   group_by(id) %>% 
-  summarise(correct = 1 - mean(error)) %>% 
-  filter(correct<="0.8")
+  summarise(correct_all = 1 - mean(error))
 
+correct_all_rate %>% 
+  filter(correct_all <= 0.8)
 
-#removing all error trials
-final_gnat <- final_gnat %>% 
-  filter(error=="0")
-
+#must delete these observations due to high block error rate
+final_gnat <-
+  gnat_important %>% 
+  left_join(correct_block_rate, by = c("id", "target")) %>% 
+  left_join(correct_all_rate, by = c("id")) %>% 
+  filter(correct_block > 0.6 & correct_all > 0.8 & error == 0) %>% 
+  filter(rt > 300 & rt < 1399)
 
 #deleting rows with too quick and too slow response windows (too quick is 300 and too slow is 3 SD above averagert ==654+165*3)
 #final_gnat %>% 
@@ -63,11 +64,9 @@ final_gnat <- final_gnat %>%
  # summarise(pers_sd = sd(rt))
 #654+165*3
 
-final_gnat<- 
-  final_gnat%>% filter(rt %in% (300:1400))
-
 #reading explicit data
-explicit_raw <- read.xlsx("thesis/data.xlsx", sheetIndex = 1) %>% 
+explicit_raw <- 
+  read_excel("thesis/data.xlsx", 1) %>%
   extract(col = participant, 
           into = c(NA, "id", NA), 
           regex = "^(.*s.)(.*)(.txt)$")
