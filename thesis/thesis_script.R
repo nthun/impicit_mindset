@@ -13,7 +13,7 @@ important_targets <- c("chall_pos", "chall_neg", "crit_pos", "crit_neg")
 
 #reading and cleaning implicit data
 
-files <- list.files(path = "stat/", pattern = "immtest.*.txt$", full.names = TRUE)
+files <- list.files(path = "thesis/", pattern = "immtest.*.txt$", full.names = TRUE)
 gnat_raw <- 
   vroom(file = files, 
         id = "id", 
@@ -27,37 +27,47 @@ gnat_important<- gnat_raw %>%
   filter(target %in% important_targets) %>% 
   filter(trial_type=="go_trial")
 
-#checking for block correct rate
+#checking for block error rate above 40%
 correct_rate <-
   gnat_important %>%  
   group_by(id, target) %>% 
   summarise(correct = 1 - mean(error))
 
-#must delete "82ddd565-aaf9-47c4-8ac6-91a6301acaed", "d2c74513-b0ed-4843-86cd-31766dedbf4b", as block error rate is above 40%
 correct_gnat <- 
   correct_rate %>% 
   filter(correct<="0.6")
 
+#must delete these observations due to high block error rate
 final_gnat <- gnat_important %>% 
-  filter(!str_detect(id, '82ddd565-aaf9-47c4-8ac6-91a6301acaed', )) %>% 
-  filter(!str_detect(id, 'd2c74513-b0ed-4843-86cd-31766dedbf4b', ))
+  filter(!str_detect(id, 'bc421a54-0eb3-4c26-8052-f318ff733821', )) %>% 
+  filter(!str_detect(id, 'cde0ca74-cfb1-484a-adf6-8589195f52b1', )) 
+  
+#no more removal needed
+correct_all <-
+  gnat_important %>% 
+  filter(target %in% important_targets) %>%
+  group_by(id) %>% 
+  summarise(correct = 1 - mean(error)) %>% 
+  filter(correct<="0.8")
+
 
 #removing all error trials
 final_gnat <- final_gnat %>% 
   filter(error=="0")
 
-#deleting rows with too quick and too slow response windows (too quick is 300 and too slow is 3 SD above averagert ==677+161*3)
+
+#deleting rows with too quick and too slow response windows (too quick is 300 and too slow is 3 SD above averagert ==654+165*3)
 #final_gnat %>% 
  # summarise(pers_a = mean(rt))
 #final_gnat %>% 
  # summarise(pers_sd = sd(rt))
-#677+161*3
+#654+165*3
 
 final_gnat<- 
   final_gnat%>% filter(rt %in% (300:1400))
 
 #reading explicit data
-explicit_raw <- read.xlsx("stat/data.xlsx", sheetIndex = 1) %>% 
+explicit_raw <- read.xlsx("thesis/data.xlsx", sheetIndex = 1) %>% 
   extract(col = participant, 
           into = c(NA, "id", NA), 
           regex = "^(.*s.)(.*)(.txt)$")
@@ -104,7 +114,7 @@ explicit_coded<-explicit_coded %>%
 #final explicit data
 explicit <-
   explicit_coded %>% 
-  select(id, Challengescenario.1, gender.1, age.1, IQMS_M, CRMS_M, CHMS_M, FMS_M, FSC_M, CrSC_M)
+  select(id, gender.1, age.1, IQMS_M, CRMS_M, CHMS_M, FMS_M, FSC_M, CrSC_M, Challengescenario.1)
 
 #calculating implicit mindset (D) scores by computing average rt for critical blocks separately, dividing by standard deviations across all critical blocks and subtracting positive blocks from negative blocks
 dscores <-
@@ -135,14 +145,18 @@ d_spread<-
   select(-pers_block_avg, -pers_sd) %>% 
   spread(target, d)
 
-#collecting all data in one dataframe
+#collecting all data in one dataframe and subsetting ELTE sample
 
 final_data <- dscores %>% 
   left_join(explicit, by = "id")
 final_data <- d_spread %>% 
   left_join(final_data, by = "id")
 
-write.csv(final_data, "stat_final_.csv")
+set.seed(1)
+randomly<-
+  final_data [sample(nrow(final_data ), 86), ]
+
+write.csv(randomly, "randomly_data.csv")
 
 #plotting implicit citicism mindset and explicit criticism mindset
 
