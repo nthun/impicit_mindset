@@ -36,9 +36,6 @@ correct_block_rate <-
   group_by(id, target) %>% 
   summarise(correct_block = 1 - mean(error))
 
-correct_block_rate %>% 
-  filter(correct_block <= 0.6)
-
 #no more removal needed
 correct_all_rate <-
   gnat_important %>% 
@@ -46,8 +43,6 @@ correct_all_rate <-
   group_by(id) %>% 
   summarise(correct_all = 1 - mean(error))
 
-correct_all_rate %>% 
-  filter(correct_all <= 0.8)
 
 #must delete these observations due to high block error rate
 final_gnat <-
@@ -151,9 +146,11 @@ test_set <-
   filter(!id %in% pull(randomly, id))
   
 
-write_excel_csv(randomly, "randomly_data.csv")
+write_excel_csv(randomly, "randomly.csv")
 
 sjPlot::sjp.corr(select(test_set, -id), sort.corr = FALSE)
+
+write_excel_csv(test_set, "test_set.csv")
 
 #plotting implicit citicism mindset and explicit criticism mindset
 

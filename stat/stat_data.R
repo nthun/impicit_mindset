@@ -5,6 +5,7 @@ library(janitor)
 library(xlsx)
 library(widyr)
 library(dplyr)
+library(readxl)
 
 #defining important blocks
 important_targets <- c("chall_pos", "chall_neg", "crit_pos", "crit_neg")
@@ -14,6 +15,7 @@ important_targets <- c("chall_pos", "chall_neg", "crit_pos", "crit_neg")
 #reading and cleaning implicit data
 
 files <- list.files(path = "stat/", pattern = "immtest.*.txt$", full.names = TRUE)
+
 gnat_raw <- 
   vroom(file = files, 
         id = "id", 
@@ -23,49 +25,53 @@ gnat_raw <-
           regex = "^(.*data.)(.*)(.txt)$")
 
 #keeping only important blocks
-gnat_important<- gnat_raw %>%  
+gnat_important <- 
+  gnat_raw %>%  
   filter(target %in% important_targets) %>% 
-  filter(trial_type=="go_trial")
+  filter(trial_type == "go_trial")
 
-#checking for block correct rate
-correct_rate <-
+#checking for block error rate above 40%
+correct_block_rate <-
   gnat_important %>%  
   group_by(id, target) %>% 
-  summarise(correct = 1 - mean(error))
+  summarise(correct_block = 1 - mean(error))
 
-#must delete "82ddd565-aaf9-47c4-8ac6-91a6301acaed", "d2c74513-b0ed-4843-86cd-31766dedbf4b", as block error rate is above 40%
-correct_gnat <- 
-  correct_rate %>% 
-  filter(correct<="0.6")
+#no more removal needed
+correct_all_rate <-
+  gnat_important %>% 
+  filter(target %in% important_targets) %>%
+  group_by(id) %>% 
+  summarise(correct_all = 1 - mean(error))
 
-final_gnat <- gnat_important %>% 
-  filter(!str_detect(id, '82ddd565-aaf9-47c4-8ac6-91a6301acaed', )) %>% 
-  filter(!str_detect(id, 'd2c74513-b0ed-4843-86cd-31766dedbf4b', ))
 
-#removing all error trials
-final_gnat <- final_gnat %>% 
-  filter(error=="0")
+#must delete these observations due to high block error rate
+final_gnat <-
+  gnat_important %>% 
+  left_join(correct_block_rate, by = c("id", "target")) %>% 
+  left_join(correct_all_rate, by = c("id")) %>% 
+  filter(correct_block > 0.6 & correct_all > 0.8 & error == 0) %>% 
+  filter(rt > 300 & rt < 1399)
 
-#deleting rows with too quick and too slow response windows (too quick is 300 and too slow is 3 SD above averagert ==677+161*3)
+#deleting rows with too quick and too slow response windows (too quick is 300 and too slow is 3 SD above averagert ==654+165*3)
 #final_gnat %>% 
- # summarise(pers_a = mean(rt))
+# summarise(pers_a = mean(rt))
 #final_gnat %>% 
- # summarise(pers_sd = sd(rt))
-#677+161*3
-
-final_gnat<- 
-  final_gnat%>% filter(rt %in% (300:1400))
+# summarise(pers_sd = sd(rt))
+#654+165*3
 
 #reading explicit data
-explicit_raw <- read.xlsx("stat/data.xlsx", sheetIndex = 1) %>% 
+explicit_raw <- 
+  read_excel("stat/data.xlsx", 1) %>%
   extract(col = participant, 
           into = c(NA, "id", NA), 
-          regex = "^(.*s.)(.*)(.txt)$")
+          regex = "^(.*s.)(.*)(.txt)$") %>% 
+  clean_names()
 
 ##cleaning explicit data
 #reversing items
-explicit_reversed <- explicit_raw %>% 
-  mutate_at(vars(IQ1.1, IQ2.1, FMS3.1, FMS4.1, CrMS3.1, CrMS4.1, ChMS3.1, ChMS4.1), 
+explicit_reversed <- 
+  explicit_raw %>% 
+  mutate_at(vars(iq1_1, iq2_1, fms3_1, fms4_1, cr_ms3_1, cr_ms4_1, ch_ms3_1, ch_ms4_1), 
             ~recode(., `1` = 6,
                     `2` = 5,
                     `3` = 4,
@@ -74,8 +80,9 @@ explicit_reversed <- explicit_raw %>%
                     `6` = 1,
             ))
 
-explicit_reversed <- explicit_reversed %>% 
-  mutate_at(vars(Failurescenario.1, Criticismscenario.1), 
+explicit_reversed <- 
+  explicit_reversed %>% 
+  mutate_at(vars(failurescenario_1, criticismscenario_1), 
             ~recode(., `1` = 5,
                     `2` = 4,
                     `4` = 2,
@@ -83,28 +90,29 @@ explicit_reversed <- explicit_reversed %>%
             ))
 
 #creating means of explicit measures
-explicit_coded<-explicit_reversed %>%
-  mutate(IQMS_M = rowMeans(x = select(.data = .,
-                                      starts_with(match = "IQ"))))
-explicit_coded<-explicit_coded %>%
-  mutate(CRMS_M = rowMeans(x = select(.data = .,
-                                      starts_with(match = "CrMS"))))
-explicit_coded<-explicit_coded %>%
-  mutate(CHMS_M = rowMeans(x = select(.data = .,
-                                      starts_with(match = "ChMS"))))
-explicit_coded<-explicit_coded %>%
-  mutate(FMS_M = rowMeans(x = select(.data = .,
-                                     starts_with(match = "FMS"))))
-explicit_coded<-explicit_coded %>%
-  mutate(FSC_M = rowMeans(x = select(.data = .,
-                                     starts_with(match = "Failure"))))
-explicit_coded<-explicit_coded %>%
-  mutate(CrSC_M = rowMeans(x = select(.data = .,
-                                      starts_with(match = "Criticism"))))
+explicit_coded <-
+  explicit_reversed %>%
+  mutate(iqms_avg = rowMeans(x = select(.data = ., starts_with(match = "iq"))))
+
+explicit_coded <- explicit_coded %>%
+  mutate(crms_avg = rowMeans(x = select(.data = ., starts_with(match = "cr_ms"))))
+
+explicit_coded <- explicit_coded %>%
+  mutate(chms_avg = rowMeans(x = select(.data = ., starts_with(match = "ch_ms"))))
+
+explicit_coded <- explicit_coded %>%
+  mutate(fms_avg = rowMeans(x = select(.data = ., starts_with(match = "fms"))))
+
+explicit_coded <- explicit_coded %>%
+  mutate(fsc_avg = rowMeans(x = select(.data = ., starts_with(match = "failure"))))
+
+explicit_coded <- explicit_coded %>%
+  mutate(crsc_avg = rowMeans(x = select(.data = ., starts_with(match = "criticism"))))
+
 #final explicit data
 explicit <-
   explicit_coded %>% 
-  select(id, Challengescenario.1, gender.1, age.1, IQMS_M, CRMS_M, CHMS_M, FMS_M, FSC_M, CrSC_M)
+  select(id, gender_1, age_1, iqms_avg, crms_avg, chms_avg, fms_avg, fsc_avg, crsc_avg, challengescenario_1)
 
 #calculating implicit mindset (D) scores by computing average rt for critical blocks separately, dividing by standard deviations across all critical blocks and subtracting positive blocks from negative blocks
 dscores <-
@@ -114,41 +122,29 @@ dscores <-
   group_by(id, target, pers_sd) %>% 
   summarise(pers_block_avg = mean(rt)) %>% 
   mutate(d = pers_block_avg/pers_sd) %>% 
-  separate(target, c("target1", "target2")) %>% 
-  select(-pers_block_avg, -pers_sd) %>% 
-  unite(targets, c("target1", "target2"), sep = "_") %>% 
-  spread(targets, d) %>% 
-  transmute(challange_d = chall_neg - chall_pos,
-            crit_d = crit_neg - crit_pos)
+  ungroup() %>% 
+  select(-pers_block_avg, -pers_sd) %>%
+  spread(target, d) %>% 
+  mutate(challange_d = chall_neg - chall_pos,
+         crit_d = crit_neg - crit_pos)
 
-#calculating D scores for separate blocks
-d_spread<-
-  final_gnat %>%  
-  filter(target %in% important_targets) %>%
-  filter(trial_type=="go_trial") %>% 
-  filter(error=="0") %>% 
-  group_by(id) %>% 
-  mutate(pers_sd = sd(rt)) %>% 
-  group_by(id, target, pers_sd) %>% 
-  summarise(pers_block_avg = mean(rt)) %>% 
-  mutate(d = pers_block_avg/pers_sd) %>% 
-  select(-pers_block_avg, -pers_sd) %>% 
-  spread(target, d)
+#collecting all data in one dataframe and subsetting ELTE sample
 
-#collecting all data in one dataframe
-
-final_data <- dscores %>% 
+final_data <- 
+  dscores %>% 
   left_join(explicit, by = "id")
-final_data <- d_spread %>% 
-  left_join(final_data, by = "id")
 
-write.csv(final_data, "stat_final_.csv")
+
+write_excel_csv(final_data, "stat_fin.csv")
+
+sjPlot::sjp.corr(select(test_set, -id), sort.corr = FALSE)
+
 
 #plotting implicit citicism mindset and explicit criticism mindset
 
 install.packages("ggpubr")
 library("ggpubr")
-ggscatter(final_data, x = "crit_d", y = "CRMS_M", 
+ggscatter(final_data, x = "crit_d", y = "crms_avg", 
           add = "reg.line", conf.int = TRUE,
           cor.coef = TRUE, cor.method = "pearson",
           xlab = "Implicit Criticism Mindset", ylab = "Explicit Criticism Mindset",
