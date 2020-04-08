@@ -61,7 +61,7 @@ final_gnat <-
 
 #reading explicit data
 explicit_raw <- 
-  read_excel("thesis/data.xlsx", 1) %>%
+  read_excel("thesis_data/data.xlsx", 1) %>%
   extract(col = participant, 
           into = c(NA, "id", NA), 
           regex = "^(.*s.)(.*)(.txt)$") %>% 
