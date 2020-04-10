@@ -14,7 +14,7 @@ important_targets <- c("chall_pos", "chall_neg", "crit_pos", "crit_neg")
 
 #reading and cleaning implicit data
 
-files <- list.files(path = "thesis/", pattern = "immtest.*.txt$", full.names = TRUE)
+files <- list.files(path = "implicit_mindset/thesis/", pattern = "immtest.*.txt$", full.names = TRUE)
 
 gnat_raw <- 
   vroom(file = files, 
@@ -23,7 +23,13 @@ gnat_raw <-
   extract(col = id, 
           into = c(NA, "id", NA), 
           regex = "^(.*data.)(.*)(.txt)$")
-
+gnat_raw <- 
+  vroom(file = files, 
+        id = "id", 
+        col_names = c("block", "block_id", "word", "max_rt", "trial_type", "word_category", "rt", "error", "target")) %>% 
+  extract(col = id, 
+          into = c(NA, "id", NA), 
+          regex = "^(.*data.)(.*)(.txt)$")
 #keeping only important blocks
 gnat_important <- 
   gnat_raw %>%  
@@ -61,7 +67,7 @@ final_gnat <-
 
 #reading explicit data
 explicit_raw <- 
-  read_excel("thesis_data/data.xlsx", 1) %>%
+  read_excel("implicit_mindset/thesis_data/data.xlsx", 1) %>%
   extract(col = participant, 
           into = c(NA, "id", NA), 
           regex = "^(.*s.)(.*)(.txt)$") %>% 
@@ -145,10 +151,11 @@ test_set <-
   final_data %>% 
   filter(!id %in% pull(randomly, id))
   
-
+install.packages("sjPlot")
+library(sjPlot)
 write_excel_csv(randomly, "randomly.csv")
 
-sjPlot::sjp.corr(select(test_set, -id), sort.corr = FALSE)
+sjPlot::sjp.corr(select(randomly, crit_pos, crsc_avg), sort.corr = FALSE)
 
 write_excel_csv(test_set, "test_set.csv")
 
@@ -156,10 +163,10 @@ write_excel_csv(test_set, "test_set.csv")
 
 install.packages("ggpubr")
 library("ggpubr")
-ggscatter(final_data, x = "crit_d", y = "crms_avg", 
+ggscatter(randomly, x = "crit_pos", y = "crsc_avg", 
           add = "reg.line", conf.int = TRUE,
-          cor.coef = TRUE, cor.method = "pearson",
-          xlab = "Implicit Criticism Mindset", ylab = "Explicit Criticism Mindset",
-          add.params = list(color = "olivedrab3",
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "Criticism Positive D Score", ylab = "Criticism Scenario",
+          add.params = list(color = "coral3",
                             fill = "gray27"))
 #computing correlations in JASP

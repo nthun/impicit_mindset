@@ -61,7 +61,7 @@ final_gnat <-
 
 #reading explicit data
 explicit_raw <- 
-  read_excel("stat_data/data.xlsx", 1) %>%
+  read_excel("implicit_mindset/stat_data/data.xlsx", 1) %>%
   extract(col = participant, 
           into = c(NA, "id", NA), 
           regex = "^(.*s.)(.*)(.txt)$") %>% 
@@ -148,6 +148,6 @@ ggscatter(final_data, x = "crit_d", y = "crms_avg",
           add = "reg.line", conf.int = TRUE,
           cor.coef = TRUE, cor.method = "pearson",
           xlab = "Implicit Criticism Mindset", ylab = "Explicit Criticism Mindset",
-          add.params = list(color = "olivedrab3",
+          add.params = list(color = "coral3",
                             fill = "gray27"))
 #computing correlations in JASP
